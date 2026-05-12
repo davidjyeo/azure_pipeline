@@ -1,0 +1,308 @@
+# =============================================================================
+# Reusable Terraform Deployment Workflow
+# -----------------------------------------------------------------------------
+# Owned and maintained by the platform team.
+# This workflow is called by team repositories using workflow_call.
+# It should not be triggered directly.
+#
+# What this workflow does:
+#   1. Validates Terraform code
+#   2. Runs Checkov security scanning
+#   3. Runs Infracost cost analysis
+#   4. Plans the Terraform changes
+#   5. Waits for manual approval before applying
+#   6. Applies the Terraform changes
+# =============================================================================
+
+on:
+  workflow_call:
+    inputs:
+      # The target deployment environment (dev, uat, prod)
+      environment:
+        required: true
+        type: string
+      # The Azure region to deploy into
+      region:
+        required: true
+        type: string
+      # The Terraform working directory within the calling repository
+      working_directory:
+        required: false
+        type: string
+        default: "."
+    secrets:
+      # Azure federated identity credentials - no client secret required
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
+      AZURE_SUBSCRIPTION_ID:
+        required: true
+      # Terraform state backend configuration
+      TFSTATE_RESOURCE_GROUP:
+        required: true
+      TFSTATE_STORAGE_ACCOUNT:
+        required: true
+      TFSTATE_CONTAINER_NAME:
+        required: true
+      # Infracost API key - stored at org level, passed through from caller
+      INFRACOST_API_KEY:
+        required: true
+
+# Concurrency control - prevents parallel deployments to the same environment.
+# If a deployment is already running for this environment, the new run will
+# queue and wait rather than running simultaneously.
+# cancel-in-progress is false to prevent cancelling a running Terraform apply.
+concurrency:
+  group: terraform-deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # JOB 1: Validate
+  # Runs Terraform validate to check the configuration is syntactically correct
+  # ---------------------------------------------------------------------------
+  validate:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      # Pin to a specific commit SHA rather than a mutable version tag
+      # to protect against supply chain compromise
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269ef065 # v3.1.2
+
+      # Authenticate to Azure using federated identity (OIDC)
+      # No client secret is required - the token is issued at runtime
+      - name: Azure Login
+        uses: azure/login@8c334a195cbb38e46038007b304988d888bf676a # v2.2.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform Init
+        working-directory: ${{ inputs.working_directory }}
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ secrets.TFSTATE_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ secrets.TFSTATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ secrets.TFSTATE_CONTAINER_NAME }}" \
+            -backend-config="key=${{ inputs.environment }}-${{ inputs.region }}.tfstate"
+
+      - name: Terraform Validate
+        working-directory: ${{ inputs.working_directory }}
+        run: terraform validate
+
+  # ---------------------------------------------------------------------------
+  # JOB 2: Security Scan
+  # Runs Checkov against the Terraform code to identify security misconfigurations
+  # before any infrastructure is planned or deployed
+  # ---------------------------------------------------------------------------
+  security-scan:
+    name: Checkov Security Scan
+    runs-on: ubuntu-latest
+    needs: validate
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@b8b8dda95bcb09f53e3dc3dd2fc66af1b7c9da74 # v12
+        with:
+          directory: ${{ inputs.working_directory }}
+          framework: terraform
+          # Soft fail allows the workflow to continue and surface all issues
+          # Set to false if you want Checkov failures to block deployment
+          soft_fail: false
+          output_format: sarif
+          output_file_path: checkov-results.sarif
+
+      # Upload results to GitHub Security tab for visibility
+      - name: Upload Checkov results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: checkov-results.sarif
+
+  # ---------------------------------------------------------------------------
+  # JOB 3: Cost Analysis
+  # Runs Infracost to generate a cost estimate for the planned changes
+  # The INFRACOST_API_KEY is stored at org level and passed through
+  # ---------------------------------------------------------------------------
+  cost-analysis:
+    name: Infracost Cost Analysis
+    runs-on: ubuntu-latest
+    needs: validate
+    outputs:
+      # Pass the cost estimate summary to downstream jobs for visibility
+      cost_summary: ${{ steps.infracost.outputs.cost_summary }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Infracost
+        uses: infracost/actions/setup@e2d793c1a3801c17e963e49f36700e9c9ded7a8b # v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+
+      - name: Run Infracost
+        id: infracost
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          infracost breakdown \
+            --path . \
+            --terraform-var="environment=${{ inputs.environment }}" \
+            --terraform-var="region=${{ inputs.region }}" \
+            --format json \
+            --out-file infracost-output.json
+
+          # Extract a summary for the job output
+          echo "cost_summary=$(infracost output --path infracost-output.json --format table)" >> $GITHUB_OUTPUT
+
+      - name: Post cost estimate comment
+        uses: infracost/actions/comment@e2d793c1a3801c17e963e49f36700e9c9ded7a8b # v3
+        with:
+          path: infracost-output.json
+          behavior: update
+
+  # ---------------------------------------------------------------------------
+  # JOB 4: Plan
+  # Generates the Terraform plan and saves it as an artifact.
+  # The saved plan ensures that what is reviewed is exactly what gets applied.
+  # ---------------------------------------------------------------------------
+  plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    needs: [security-scan, cost-analysis]
+    outputs:
+      # Pass the plan exit code to the apply job
+      # 0 = no changes, 1 = error, 2 = changes present
+      plan_exit_code: ${{ steps.plan.outputs.exit_code }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269ef065 # v3.1.2
+
+      - name: Azure Login
+        uses: azure/login@8c334a195cbb38e46038007b304988d888bf676a # v2.2.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform Init
+        working-directory: ${{ inputs.working_directory }}
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ secrets.TFSTATE_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ secrets.TFSTATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ secrets.TFSTATE_CONTAINER_NAME }}" \
+            -backend-config="key=${{ inputs.environment }}-${{ inputs.region }}.tfstate"
+
+      - name: Terraform Plan
+        id: plan
+        working-directory: ${{ inputs.working_directory }}
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+        # Save the plan to a file so apply uses the exact same plan
+        # -detailed-exitcode returns 2 if there are changes, 0 if none
+        run: |
+          terraform plan \
+            -var="environment=${{ inputs.environment }}" \
+            -var="region=${{ inputs.region }}" \
+            -out=tfplan \
+            -detailed-exitcode
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+
+      # Upload the plan file as an artifact so the apply job can download it
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ inputs.environment }}-${{ inputs.region }}
+          path: ${{ inputs.working_directory }}/tfplan
+          retention-days: 1
+
+  # ---------------------------------------------------------------------------
+  # JOB 5: Apply
+  # Downloads the saved plan and applies it.
+  # Runs against a GitHub Environment with protection rules configured,
+  # which enforces manual approval before this job can execute.
+  # The approval gate is configured in the GitHub Environment settings,
+  # not in this workflow file.
+  # ---------------------------------------------------------------------------
+  apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    needs: plan
+    # Reference the GitHub Environment - approval gates are configured there
+    environment: ${{ inputs.environment }}
+    # Only run apply if the plan produced changes
+    if: needs.plan.outputs.plan_exit_code == 2
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269ef065 # v3.1.2
+
+      - name: Azure Login
+        uses: azure/login@8c334a195cbb38e46038007b304988d888bf676a # v2.2.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform Init
+        working-directory: ${{ inputs.working_directory }}
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ secrets.TFSTATE_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ secrets.TFSTATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ secrets.TFSTATE_CONTAINER_NAME }}" \
+            -backend-config="key=${{ inputs.environment }}-${{ inputs.region }}.tfstate"
+
+      # Download the exact plan file generated in the plan job
+      # This ensures apply executes against what was reviewed, not a fresh plan
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ inputs.environment }}-${{ inputs.region }}
+          path: ${{ inputs.working_directory }}
+
+      - name: Terraform Apply
+        working-directory: ${{ inputs.working_directory }}
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+        run: terraform apply tfplan
