@@ -190,6 +190,7 @@ jobs:
   # The saved plan ensures that what is reviewed is exactly what gets applied.
   # ---------------------------------------------------------------------------
   plan:
+    environment: apply
     name: Terraform Plan
     runs-on: ubuntu-latest
     needs: validate
