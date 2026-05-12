@@ -1,7 +1,7 @@
 module "naming" {
 #   version  = "0.4.3"
   source   = "Azure/naming/azurerm"
-  prefix = [
+  suffix = [
     "az",
     "djy",
     var.environment
