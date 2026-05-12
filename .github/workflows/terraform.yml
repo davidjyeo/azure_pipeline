@@ -16,23 +16,48 @@
 
 on:
   workflow_dispatch:
-  workflow_call:
     inputs:
       # The target deployment environment (dev, uat, prod)
       environment:
+        description: "Target deployment environment"
+        required: true
         type: choice
+        default: dev
         options:
           - dev
           - uat
           - prod
+
       # The Azure region to deploy into
       region:
+        description: "Azure region to deploy into"
         required: true
         type: choice
+        default: uksouth
         options:
           - uksouth
           - ukwest
           - westeurope
+
+      # The Terraform working directory within the repository
+      working_directory:
+        description: "Terraform working directory"
+        required: false
+        type: string
+        default: "."
+
+  workflow_call:
+    inputs:
+      # The target deployment environment (dev, uat, prod)
+      environment:
+        required: true
+        type: string
+
+      # The Azure region to deploy into
+      region:
+        required: true
+        type: string
+
       # The Terraform working directory within the calling repository
       working_directory:
         required: false
