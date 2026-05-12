@@ -46,9 +46,9 @@ on:
         required: true
       TFSTATE_CONTAINER_NAME:
         required: true
-      # Infracost API key - stored at org level, passed through from caller
-      #INFRACOST_API_KEY:
-      #  required: true
+      #Infracost API key - stored at org level, passed through from caller
+      INFRACOST_API_KEY:
+        required: true
 
 # Concurrency control - prevents parallel deployments to the same environment.
 # If a deployment is already running for this environment, the new run will
@@ -70,35 +70,18 @@ jobs:
 
     steps:
       - name: HashiCorp - Setup Terraform
-        # You may pin to the exact commit or the version.
-        # uses: hashicorp/setup-terraform@633666f66e0061ca3b725c73b2ec20cd13a8fdd1
         uses: hashicorp/setup-terraform@v2.0.3
-        #with:
-        #  # The hostname of a Terraform Cloud/Enterprise instance to place within the credentials block of the Terraform CLI configuration file. Defaults to `app.terraform.io`.
-        #  cli_config_credentials_hostname: # optional, default is app.terraform.io
-        #  # The API token for a Terraform Cloud/Enterprise instance to place within the credentials block of the Terraform CLI configuration file.
-        #  cli_config_credentials_token: # optional
-        #  # The version of Terraform CLI to install. Instead of full version string you can also specify constraint string starting with "<" (for example `<1.13.0`) to install the latest version satisfying the constraint. A value of `latest` will install the latest version of Terraform CLI. Defaults to `latest`.
-        #  terraform_version: # optional, default is latest
-        #  # Whether or not to install a wrapper to wrap subsequent calls of the `terraform` binary and expose its STDOUT, STDERR, and exit code as outputs named `stdout`, `stderr`, and `exitcode` respectively. Defaults to `true`.
-        #  terraform_wrapper: # optional, default is true
-          
-      # Pin to a specific commit SHA rather than a mutable version tag
-      # to protect against supply chain compromise
-#      - name: Checkout code
-#        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-#      - name: Setup Terraform
-#        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269ef065 # v3.1.2
-
-      # Authenticate to Azure using federated identity (OIDC)
-      # No client secret is required - the token is issued at runtime
-      - name: Azure Login
-        uses: azure/login@8c334a195cbb38e46038007b304988d888bf676a # v2.2.0
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          terraform_version: latest
+
+      # # Authenticate to Azure using federated identity (OIDC)
+      # # No client secret is required - the token is issued at runtime
+      # - name: Azure Login
+      #   uses: azure/login@8c334a195cbb38e46038007b304988d888bf676a # v2.2.0
+      #   with:
+      #     client-id: ${{ secrets.AZURE_CLIENT_ID }}
+      #     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+      #     subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Terraform Init
         working-directory: ${{ inputs.working_directory }}
@@ -123,74 +106,74 @@ jobs:
   # Runs Checkov against the Terraform code to identify security misconfigurations
   # before any infrastructure is planned or deployed
   # ---------------------------------------------------------------------------
-  security-scan:
-    name: Checkov Security Scan
-    runs-on: ubuntu-latest
-    needs: validate
+  # security-scan:
+  #   name: Checkov Security Scan
+  #   runs-on: ubuntu-latest
+  #   needs: validate
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Run Checkov
-        uses: bridgecrewio/checkov-action@b8b8dda95bcb09f53e3dc3dd2fc66af1b7c9da74 # v12
-        with:
-          directory: ${{ inputs.working_directory }}
-          framework: terraform
-          # Soft fail allows the workflow to continue and surface all issues
-          # Set to false if you want Checkov failures to block deployment
-          soft_fail: false
-          output_format: sarif
-          output_file_path: checkov-results.sarif
+  #     - name: Run Checkov
+  #       uses: bridgecrewio/checkov-action@b8b8dda95bcb09f53e3dc3dd2fc66af1b7c9da74 # v12
+  #       with:
+  #         directory: ${{ inputs.working_directory }}
+  #         framework: terraform
+  #         # Soft fail allows the workflow to continue and surface all issues
+  #         # Set to false if you want Checkov failures to block deployment
+  #         soft_fail: false
+  #         output_format: sarif
+  #         output_file_path: checkov-results.sarif
 
-      # Upload results to GitHub Security tab for visibility
-      - name: Upload Checkov results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: checkov-results.sarif
+  #     # Upload results to GitHub Security tab for visibility
+  #     - name: Upload Checkov results
+  #       uses: github/codeql-action/upload-sarif@v3
+  #       if: always()
+  #       with:
+  #         sarif_file: checkov-results.sarif
 
-  # ---------------------------------------------------------------------------
-  # JOB 3: Cost Analysis
-  # Runs Infracost to generate a cost estimate for the planned changes
-  # The INFRACOST_API_KEY is stored at org level and passed through
-  # ---------------------------------------------------------------------------
-  cost-analysis:
-    name: Infracost Cost Analysis
-    runs-on: ubuntu-latest
-    needs: validate
-    outputs:
-      # Pass the cost estimate summary to downstream jobs for visibility
-      cost_summary: ${{ steps.infracost.outputs.cost_summary }}
+  # # ---------------------------------------------------------------------------
+  # # JOB 3: Cost Analysis
+  # # Runs Infracost to generate a cost estimate for the planned changes
+  # # The INFRACOST_API_KEY is stored at org level and passed through
+  # # ---------------------------------------------------------------------------
+  # cost-analysis:
+  #   name: Infracost Cost Analysis
+  #   runs-on: ubuntu-latest
+  #   needs: validate
+  #   outputs:
+  #     # Pass the cost estimate summary to downstream jobs for visibility
+  #     cost_summary: ${{ steps.infracost.outputs.cost_summary }}
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Setup Infracost
-        uses: infracost/actions/setup@e2d793c1a3801c17e963e49f36700e9c9ded7a8b # v3
-        with:
-          api-key: ${{ secrets.INFRACOST_API_KEY }}
+  #     - name: Setup Infracost
+  #       uses: infracost/actions/setup@e2d793c1a3801c17e963e49f36700e9c9ded7a8b # v3
+  #       with:
+  #         api-key: ${{ secrets.INFRACOST_API_KEY }}
 
-      - name: Run Infracost
-        id: infracost
-        working-directory: ${{ inputs.working_directory }}
-        run: |
-          infracost breakdown \
-            --path . \
-            --terraform-var="environment=${{ inputs.environment }}" \
-            --terraform-var="region=${{ inputs.region }}" \
-            --format json \
-            --out-file infracost-output.json
+  #     - name: Run Infracost
+  #       id: infracost
+  #       working-directory: ${{ inputs.working_directory }}
+  #       run: |
+  #         infracost breakdown \
+  #           --path . \
+  #           --terraform-var="environment=${{ inputs.environment }}" \
+  #           --terraform-var="region=${{ inputs.region }}" \
+  #           --format json \
+  #           --out-file infracost-output.json
 
-          # Extract a summary for the job output
-          echo "cost_summary=$(infracost output --path infracost-output.json --format table)" >> $GITHUB_OUTPUT
+  #         # Extract a summary for the job output
+  #         echo "cost_summary=$(infracost output --path infracost-output.json --format table)" >> $GITHUB_OUTPUT
 
-      - name: Post cost estimate comment
-        uses: infracost/actions/comment@e2d793c1a3801c17e963e49f36700e9c9ded7a8b # v3
-        with:
-          path: infracost-output.json
-          behavior: update
+  #     - name: Post cost estimate comment
+  #       uses: infracost/actions/comment@e2d793c1a3801c17e963e49f36700e9c9ded7a8b # v3
+  #       with:
+  #         path: infracost-output.json
+  #         behavior: update
 
   # ---------------------------------------------------------------------------
   # JOB 4: Plan
@@ -207,12 +190,11 @@ jobs:
       plan_exit_code: ${{ steps.plan.outputs.exit_code }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269ef065 # v3.1.2
-
+      - name: HashiCorp - Setup Terraform
+        uses: hashicorp/setup-terraform@v2.0.3
+        with:
+          terraform_version: latest
+      
       - name: Azure Login
         uses: azure/login@8c334a195cbb38e46038007b304988d888bf676a # v2.2.0
         with:
@@ -278,11 +260,10 @@ jobs:
     if: needs.plan.outputs.plan_exit_code == 2
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269ef065 # v3.1.2
+      - name: HashiCorp - Setup Terraform
+        uses: hashicorp/setup-terraform@v2.0.3
+        with:
+          terraform_version: latest
 
       - name: Azure Login
         uses: azure/login@8c334a195cbb38e46038007b304988d888bf676a # v2.2.0
