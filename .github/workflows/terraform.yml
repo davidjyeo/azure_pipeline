@@ -275,11 +275,11 @@ jobs:
         run: |
           terraform plan \
             -out=tfplan \
+            -var="environment=${{ inputs.environment }}" \
+            -var="region=${{ inputs.region }}" \
             -detailed-exitcode
           echo "exit_code=$?" >> $GITHUB_OUTPUT
-    # -var="environment=${{ inputs.environment }}" \
-    #         -var="region=${{ inputs.region }}" \
-
+    
       # Upload the plan file as an artifact so the apply job can download it
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
