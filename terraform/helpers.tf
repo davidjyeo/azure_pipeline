@@ -4,8 +4,8 @@ module "naming" {
   suffix = [
     "az",
     "djy",
-    var.environment,
-    "${module.avm-utl-regions.regions[0].short_name}"
+    var.environment
+    # "${module.avm-utl-regions.regions[0].short_name}"
   ]
 }
 
