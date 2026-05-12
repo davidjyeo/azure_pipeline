@@ -73,6 +73,10 @@ jobs:
     environment: ${{ inputs.environment }}
 
     steps:
+
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+      
       - name: HashiCorp - Setup Terraform
         uses: hashicorp/setup-terraform@v4
         with:
@@ -195,6 +199,10 @@ jobs:
       plan_exit_code: ${{ steps.plan.outputs.exit_code }}
 
     steps:
+
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
       - name: HashiCorp - Setup Terraform
         uses: hashicorp/setup-terraform@v4
         with:
@@ -265,6 +273,10 @@ jobs:
     if: needs.plan.outputs.plan_exit_code == 2
 
     steps:
+
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
       - name: HashiCorp - Setup Terraform
         uses: hashicorp/setup-terraform@v4
         with:
