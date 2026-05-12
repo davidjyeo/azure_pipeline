@@ -282,7 +282,7 @@ jobs:
     
       # Upload the plan file as an artifact so the apply job can download it
       - name: Upload plan artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tfplan-${{ inputs.environment }}-${{ inputs.region }}
           path: ${{ inputs.working_directory }}/tfplan
