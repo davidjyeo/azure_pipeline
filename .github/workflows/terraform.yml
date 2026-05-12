@@ -20,12 +20,19 @@ on:
     inputs:
       # The target deployment environment (dev, uat, prod)
       environment:
-        required: true
-        type: string
+        type: choice
+        options:
+          - dev
+          - uat
+          - prod
       # The Azure region to deploy into
       region:
         required: true
-        type: string
+        type: choice
+        options:
+          - uksouth
+          - ukwest
+          - westeurope
       # The Terraform working directory within the calling repository
       working_directory:
         required: false
@@ -190,7 +197,6 @@ jobs:
   # The saved plan ensures that what is reviewed is exactly what gets applied.
   # ---------------------------------------------------------------------------
   plan:
-    environment: apply
     name: Terraform Plan
     runs-on: ubuntu-latest
     needs: validate
