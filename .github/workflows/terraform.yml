@@ -302,7 +302,7 @@ jobs:
     # Reference the GitHub Environment - approval gates are configured there
     environment: ${{ inputs.environment }}
     # Only run apply if the plan produced changes
-    if: needs.plan.outputs.plan_exit_code == 2
+    # if: needs.plan.outputs.plan_exit_code == 2
 
     steps:
 
