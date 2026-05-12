@@ -274,11 +274,11 @@ jobs:
         # -detailed-exitcode returns 2 if there are changes, 0 if none
         run: |
           terraform plan \
-            -var="environment=${{ inputs.environment }}" \
-            -var="region=${{ inputs.region }}" \
             -out=tfplan \
             -detailed-exitcode
           echo "exit_code=$?" >> $GITHUB_OUTPUT
+    # -var="environment=${{ inputs.environment }}" \
+    #         -var="region=${{ inputs.region }}" \
 
       # Upload the plan file as an artifact so the apply job can download it
       - name: Upload plan artifact
