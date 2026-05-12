@@ -15,9 +15,6 @@
 # =============================================================================
 
 on:
-  permissions:
-    id-token: write # Required for Azure OIDC authentication
-    contents: read # Required to checkout code and upload Checkov results
   workflow_dispatch:
   workflow_call:
     inputs:
@@ -52,6 +49,10 @@ on:
       #Infracost API key - stored at org level, passed through from caller
       INFRACOST_API_KEY:
         required: true
+
+permissions:
+    id-token: write # Required for Azure OIDC authentication
+    contents: read # Required to checkout code and upload Checkov results
 
 # Concurrency control - prevents parallel deployments to the same environment.
 # If a deployment is already running for this environment, the new run will
