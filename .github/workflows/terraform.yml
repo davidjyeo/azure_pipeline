@@ -106,8 +106,8 @@ jobs:
 
     steps:
 
-      - name: Checkout
-        uses: actions/checkout@v6.0.2
+      # - name: Checkout
+      - uses: actions/checkout@v6 #.0.2
       
       - name: HashiCorp - Setup Terraform
         uses: hashicorp/setup-terraform@v4
@@ -233,8 +233,8 @@ jobs:
 
     steps:
 
-      - name: Checkout
-        uses: actions/checkout@v6.0.2
+      # - name: Checkout
+      - uses: actions/checkout@v6 #.0.2
 
       - name: HashiCorp - Setup Terraform
         uses: hashicorp/setup-terraform@v4
