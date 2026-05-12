@@ -33,11 +33,11 @@ on:
         description: "Azure region to deploy into"
         required: true
         type: choice
-        default: uksouth
+        default: "UK South"
         options:
-          - uksouth
-          - ukwest
-          - westeurope
+          - "UK South"
+          - "UK West"
+          - "West Europe"
 
       # The Terraform working directory within the repository
       working_directory:
