@@ -27,7 +27,7 @@ terraform {
 }
 
 provider "azurerm" {
-  subscription_id     = var.deployment_subscription_id
+#   subscription_id     = var.deployment_subscription_id
   use_oidc            = true
   storage_use_azuread = true
   use_cli             = false
