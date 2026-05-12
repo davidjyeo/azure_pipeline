@@ -102,7 +102,7 @@ jobs:
   validate:
     name: Terraform Validate
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    # environment: ${{ inputs.environment }}
 
     steps:
 
