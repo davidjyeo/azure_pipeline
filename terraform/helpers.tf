@@ -12,6 +12,6 @@ module "naming" {
 module "avm-utl-regions" {
     # version = "0.12.0"
     source  = "Azure/avm-utl-regions/azurerm"
-    geography_filter = var.region
+    geography_filter = "United Kingdom" #var.region
     enable_telemetry = var.enable_telemetry
 }
