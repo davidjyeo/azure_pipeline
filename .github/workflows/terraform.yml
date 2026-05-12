@@ -228,7 +228,7 @@ jobs:
             -backend-config="resource_group_name=${{ secrets.TFSTATE_RESOURCE_GROUP }}" \
             -backend-config="storage_account_name=${{ secrets.TFSTATE_STORAGE_ACCOUNT }}" \
             -backend-config="container_name=${{ secrets.TFSTATE_CONTAINER_NAME }}" \
-            -backend-config="key=${{ inputs.environment }}-${{ inputs.region }}.tfstate"
+            -backend-config="key=azure-pipeline.tfstate"
 
       - name: Terraform Plan
         id: plan
@@ -302,7 +302,7 @@ jobs:
             -backend-config="resource_group_name=${{ secrets.TFSTATE_RESOURCE_GROUP }}" \
             -backend-config="storage_account_name=${{ secrets.TFSTATE_STORAGE_ACCOUNT }}" \
             -backend-config="container_name=${{ secrets.TFSTATE_CONTAINER_NAME }}" \
-            -backend-config="key=${{ inputs.environment }}-${{ inputs.region }}.tfstate"
+            -backend-config="key=azure-pipeline.tfstate"
 
       # Download the exact plan file generated in the plan job
       # This ensures apply executes against what was reviewed, not a fresh plan
