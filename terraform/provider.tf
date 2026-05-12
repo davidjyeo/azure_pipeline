@@ -3,24 +3,24 @@ terraform {
     azurerm = {
       source = "hashicorp/azurerm"
     }
-    azapi = {
-      source = "azure/azapi"
-    }
-    random = {
-      source = "hashicorp/random"
-    }
-    modtm = {
-      source = "Azure/modtm"
-    }
-    local = {
-      source = "hashicorp/local"
-    }
-    azuread = {
-      source = "hashicorp/azuread"
-    }
-    tls = {
-      source = "hashicorp/tls"
-    }
+#     azapi = {
+#       source = "azure/azapi"
+#     }
+#     random = {
+#       source = "hashicorp/random"
+#     }
+#     modtm = {
+#       source = "Azure/modtm"
+#     }
+#     local = {
+#       source = "hashicorp/local"
+#     }
+#     azuread = {
+#       source = "hashicorp/azuread"
+#     }
+#     tls = {
+#       source = "hashicorp/tls"
+#     }
   }
 
   backend "azurerm" {}
