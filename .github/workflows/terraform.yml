@@ -15,6 +15,7 @@
 # =============================================================================
 
 on:
+  workflow_dispatch:
   workflow_call:
     inputs:
       # The target deployment environment (dev, uat, prod)
