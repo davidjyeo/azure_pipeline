@@ -47,7 +47,7 @@ resource "azurerm_role_assignment" "subscription_contributor" {
   }
 
   scope                = "/subscriptions/${each.key}"
-  role_definition_name = "Contributor"
+  role_definition_name = "Owner"
 
   # principal_id is the object ID of the managed identity's service principal
   principal_id = module.user_assigned_identity[each.key].principal_id
