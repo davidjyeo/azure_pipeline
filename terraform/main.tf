@@ -20,10 +20,10 @@ module "user_assigned_identity" {
 
   federated_identity_credentials = {
     github_actions = {
-      name         = "github-actions"
-      issuer       = "https://token.actions.githubusercontent.com"
-      subject      = "repo:davidjyeo/azure_pipeline:ref:refs/heads/main"
-      descriptions = "Federated identity credential for GitHub Actions"
+      name    = "github-actions"
+      issuer  = "https://token.actions.githubusercontent.com"
+      subject = "repo:davidjyeo/azure_pipeline:ref:refs/heads/main"
+      # descriptions = "Federated identity credential for GitHub Actions"
     }
   }
 
