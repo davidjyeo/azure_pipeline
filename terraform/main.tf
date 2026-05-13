@@ -17,7 +17,7 @@ module "storage_account" {
   account_kind                      = "StorageV2"
   account_tier                      = "Premium"
   provisioned_billing_model_version = "V2"
-  account_sku_name                  = "PremiumV2_LRS"
+  # account_sku_name                  = "PremiumV2_LRS"
 
   managed_identities = {
     system_assigned = true
