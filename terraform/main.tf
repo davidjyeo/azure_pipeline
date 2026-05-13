@@ -20,18 +20,18 @@ module "user_assigned_identity" {
   resource_group_name = module.resource_group_uami.name
   enable_telemetry    = var.enable_telemetry
 
-  federated_identity_credentials = {
-    github_actions = {
-      name    = "github-actions"
-      issuer  = "https://token.actions.githubusercontent.com"
-      subject = "repo:davidjyeo/azure_pipeline:ref:refs/heads/main"
+  # federated_identity_credentials = {
+  #   github_actions = {
+  #     name    = "github-actions"
+  #     issuer  = "https://token.actions.githubusercontent.com"
+  #     subject = "repo:davidjyeo/azure_pipeline:ref:refs/heads/main"
 
-      audience = [
-        "api://AzureADTokenExchange"
-      ]
+  #     audience = [
+  #       "api://AzureADTokenExchange"
+  #     ]
 
-    }
-  }
+  #   }
+  # }
 
 }
 
