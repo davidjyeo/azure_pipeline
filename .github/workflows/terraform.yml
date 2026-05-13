@@ -141,6 +141,32 @@ jobs:
         working-directory: ${{ inputs.working_directory }}
         run: terraform validate
 
+      - name: Terraform Plan
+        id: plan
+        working-directory: ${{ inputs.working_directory }}
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+        # Save the plan to a file so apply uses the exact same plan
+        # -detailed-exitcode returns 2 if there are changes, 0 if none
+        run: |
+          terraform plan \
+            -out=tfplan \
+            -var="environment=${{ inputs.environment }}" \
+            -var="region=${{ inputs.region }}" \
+            -detailed-exitcode
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+    
+      # Upload the plan file as an artifact so the apply job can download it
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: tfplan-${{ inputs.environment }}-${{ inputs.region }}
+          path: ${{ inputs.working_directory }}/tfplan
+          retention-days: 1
+
   # ---------------------------------------------------------------------------
   # JOB 2: Security Scan
   # Runs Checkov against the Terraform code to identify security misconfigurations
@@ -220,72 +246,72 @@ jobs:
   # Generates the Terraform plan and saves it as an artifact.
   # The saved plan ensures that what is reviewed is exactly what gets applied.
   # ---------------------------------------------------------------------------
-  plan:
-    name: Terraform Plan
-    runs-on: ubuntu-latest
-    needs: validate
-    # needs: [security-scan, cost-analysis]
-    outputs:
-      # Pass the plan exit code to the apply job
-      # 0 = no changes, 1 = error, 2 = changes present
-      plan_exit_code: ${{ steps.plan.outputs.exit_code }}
+  # plan:
+  #   name: Terraform Plan
+  #   runs-on: ubuntu-latest
+  #   needs: validate
+  #   # needs: [security-scan, cost-analysis]
+  #   outputs:
+  #     # Pass the plan exit code to the apply job
+  #     # 0 = no changes, 1 = error, 2 = changes present
+  #     plan_exit_code: ${{ steps.plan.outputs.exit_code }}
 
-    steps:
+  #   steps:
 
-      # - name: Checkout
-      - uses: actions/checkout@v6 #.0.2
+  #     # - name: Checkout
+  #     - uses: actions/checkout@v6 #.0.2
 
-      - name: HashiCorp - Setup Terraform
-        uses: hashicorp/setup-terraform@v4
-        with:
-          terraform_version: latest
+  #     - name: HashiCorp - Setup Terraform
+  #       uses: hashicorp/setup-terraform@v4
+  #       with:
+  #         terraform_version: latest
       
-      - name: Azure Login
-        uses: Azure/login@v3
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  #     - name: Azure Login
+  #       uses: Azure/login@v3
+  #       with:
+  #         client-id: ${{ secrets.AZURE_CLIENT_ID }}
+  #         tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+  #         subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Terraform Init
-        working-directory: ${{ inputs.working_directory }}
-        env:
-          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          ARM_USE_OIDC: true
-        run: |
-          terraform init \
-            -backend-config="resource_group_name=${{ secrets.TFSTATE_RESOURCE_GROUP }}" \
-            -backend-config="storage_account_name=${{ secrets.TFSTATE_STORAGE_ACCOUNT }}" \
-            -backend-config="container_name=${{ secrets.TFSTATE_CONTAINER_NAME }}" \
-            -backend-config="key=azure-pipeline-${{ inputs.environment }}.tfstate"
+  #     - name: Terraform Init
+  #       working-directory: ${{ inputs.working_directory }}
+  #       env:
+  #         ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  #         ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  #         ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  #         ARM_USE_OIDC: true
+  #       run: |
+  #         terraform init \
+  #           -backend-config="resource_group_name=${{ secrets.TFSTATE_RESOURCE_GROUP }}" \
+  #           -backend-config="storage_account_name=${{ secrets.TFSTATE_STORAGE_ACCOUNT }}" \
+  #           -backend-config="container_name=${{ secrets.TFSTATE_CONTAINER_NAME }}" \
+  #           -backend-config="key=azure-pipeline-${{ inputs.environment }}.tfstate"
 
-      - name: Terraform Plan
-        id: plan
-        working-directory: ${{ inputs.working_directory }}
-        env:
-          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          ARM_USE_OIDC: true
-        # Save the plan to a file so apply uses the exact same plan
-        # -detailed-exitcode returns 2 if there are changes, 0 if none
-        run: |
-          terraform plan \
-            -out=tfplan \
-            -var="environment=${{ inputs.environment }}" \
-            -var="region=${{ inputs.region }}" \
-            -detailed-exitcode
-          echo "exit_code=$?" >> $GITHUB_OUTPUT
+  #     - name: Terraform Plan
+  #       id: plan
+  #       working-directory: ${{ inputs.working_directory }}
+  #       env:
+  #         ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  #         ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  #         ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  #         ARM_USE_OIDC: true
+  #       # Save the plan to a file so apply uses the exact same plan
+  #       # -detailed-exitcode returns 2 if there are changes, 0 if none
+  #       run: |
+  #         terraform plan \
+  #           -out=tfplan \
+  #           -var="environment=${{ inputs.environment }}" \
+  #           -var="region=${{ inputs.region }}" \
+  #           -detailed-exitcode
+  #         echo "exit_code=$?" >> $GITHUB_OUTPUT
     
-      # Upload the plan file as an artifact so the apply job can download it
-      - name: Upload plan artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: tfplan-${{ inputs.environment }}-${{ inputs.region }}
-          path: ${{ inputs.working_directory }}/tfplan
-          retention-days: 1
+  #     # Upload the plan file as an artifact so the apply job can download it
+  #     - name: Upload plan artifact
+  #       uses: actions/upload-artifact@v7
+  #       with:
+  #         name: tfplan-${{ inputs.environment }}-${{ inputs.region }}
+  #         path: ${{ inputs.working_directory }}/tfplan
+  #         retention-days: 1
 
   # ---------------------------------------------------------------------------
   # JOB 5: Apply
@@ -298,7 +324,8 @@ jobs:
   apply:
     name: Terraform Apply
     runs-on: ubuntu-latest
-    needs: plan
+    # needs: plan
+    needs: validate
     # Reference the GitHub Environment - approval gates are configured there
     # environment: ${{ inputs.environment }}
     # Only run apply if the plan produced changes
