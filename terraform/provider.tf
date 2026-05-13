@@ -1,26 +1,12 @@
 terraform {
   required_providers {
-    azurerm = {
-      source = "hashicorp/azurerm"
-    }
-    #     azapi = {
-    #       source = "azure/azapi"
-    #     }
-    #     random = {
-    #       source = "hashicorp/random"
-    #     }
-    #     modtm = {
-    #       source = "Azure/modtm"
-    #     }
-    #     local = {
-    #       source = "hashicorp/local"
-    #     }
-    #     azuread = {
-    #       source = "hashicorp/azuread"
-    #     }
-    #     tls = {
-    #       source = "hashicorp/tls"
-    #     }
+    azurerm = { source = "hashicorp/azurerm" } #, version = "" }
+    azapi   = { source = "azure/azapi" }       #, version = "" }
+    azuread = { source = "hashicorp/azuread" } #, version = "" }
+    random  = { source = "hashicorp/random" }  #, version = "" }
+    modtm   = { source = "Azure/modtm" }       #, version = "" }
+    local   = { source = "hashicorp/local" }   #, version = "" }
+    tls     = { source = "hashicorp/tls" }     #, version = "" }
   }
 
   backend "azurerm" {}
