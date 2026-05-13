@@ -12,10 +12,16 @@ module "resource_group_uami" {
 }
 
 module "user_assigned_identity" {
-  for_each = data.azurerm_subscriptions.available.subscriptions
-  source   = "Azure/avm-res-managedidentity-userassignedidentity/azurerm"
+  # for_each = data.azurerm_subscriptions.available.subscriptions
+
+  # Convert the list of subscription objects into a map keyed by subscription ID
+  for_each = {
+    for subscription in data.azurerm_subscriptions.available.subscriptions :
+    subscription.subscription_id => subscription
+  }
+  source = "Azure/avm-res-managedidentity-userassignedidentity/azurerm"
   # name                = "${module.naming.user_assigned_identity.name}-01"
-  name                = "${each.key}.display_name"
+  name                = each.value.display_name
   location            = module.resource_group_uami.location
   resource_group_name = module.resource_group_uami.name
   enable_telemetry    = var.enable_telemetry
