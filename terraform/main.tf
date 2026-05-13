@@ -39,8 +39,8 @@ module "user_assigned_identity" {
 
 }
 
-# Assign Contributor role to each UAMI at the corresponding subscription scope
-resource "azurerm_role_assignment" "subscription_contributor" {
+# Assign Owner role to each UAMI at the corresponding subscription scope
+resource "azurerm_role_assignment" "subscription_owner" {
   for_each = {
     for subscription in data.azurerm_subscriptions.available.subscriptions :
     subscription.subscription_id => subscription
@@ -48,7 +48,5 @@ resource "azurerm_role_assignment" "subscription_contributor" {
 
   scope                = "/subscriptions/${each.key}"
   role_definition_name = "Owner"
-
-  # principal_id is the object ID of the managed identity's service principal
-  principal_id = module.user_assigned_identity[each.key].principal_id
+  principal_id         = module.user_assigned_identity[each.key].principal_id
 }
