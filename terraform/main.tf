@@ -21,7 +21,7 @@ module "user_assigned_identity" {
   }
   source = "Azure/avm-res-managedidentity-userassignedidentity/azurerm"
   # name                = "${module.naming.user_assigned_identity.name}-01"
-  name                = each.value.display_name
+  name                = lower(each.value.display_name)
   location            = module.resource_group_uami.location
   resource_group_name = module.resource_group_uami.name
   enable_telemetry    = var.enable_telemetry
