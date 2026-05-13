@@ -11,14 +11,13 @@ module "storage_account" {
   name                              = replace("${module.naming.storage_account.name}-01", "-", "")
   location                          = module.resource_group.location
   parent_id                         = module.resource_group.resource_id
-  account_replication_type          = "LRS"
   enable_telemetry                  = false
   shared_access_key_enabled         = true
   public_network_access_enabled     = true
   account_kind                      = "StorageV2"
   account_tier                      = "Premium"
   provisioned_billing_model_version = "V2"
-  # account_sku_name              = "PremiumV2_LRS"
+  account_sku_name                  = "PremiumV2_LRS"
 
   managed_identities = {
     system_assigned = true
