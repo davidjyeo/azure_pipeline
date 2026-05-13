@@ -11,6 +11,26 @@ module "resource_group_uami" {
   location = "uksouth"
 }
 
+module "user_assigned_identity" {
+  source              = "Azure/avm-res-managedidentity-userassignedidentity/azurerm"
+  name                = "${module.naming.user_assigned_identity.name}-01"
+  location            = module.resource_group_uami.location
+  resource_group_name = module.resource_group_uami.name
+  enable_telemetry    = var.enable_telemetry
+
+  federated_identity_credentials = {
+    github_actions = {
+      name         = "github-actions"
+      issuer       = "https://token.actions.githubusercontent.com"
+      subject      = "repo:davidjyeo/azure_pipeline:ref:refs/heads/main"
+      descriptions = "Federated identity credential for GitHub Actions"
+    }
+  }
+
+}
+
+
+
 # module "storage_account" {
 #   version                       = "0.6.7"
 #   source                        = "Azure/avm-res-storage-storageaccount/azurerm"
