@@ -3,31 +3,30 @@ terraform {
     azurerm = {
       source = "hashicorp/azurerm"
     }
-#     azapi = {
-#       source = "azure/azapi"
-#     }
-#     random = {
-#       source = "hashicorp/random"
-#     }
-#     modtm = {
-#       source = "Azure/modtm"
-#     }
-#     local = {
-#       source = "hashicorp/local"
-#     }
-#     azuread = {
-#       source = "hashicorp/azuread"
-#     }
-#     tls = {
-#       source = "hashicorp/tls"
-#     }
+    #     azapi = {
+    #       source = "azure/azapi"
+    #     }
+    #     random = {
+    #       source = "hashicorp/random"
+    #     }
+    #     modtm = {
+    #       source = "Azure/modtm"
+    #     }
+    #     local = {
+    #       source = "hashicorp/local"
+    #     }
+    #     azuread = {
+    #       source = "hashicorp/azuread"
+    #     }
+    #     tls = {
+    #       source = "hashicorp/tls"
+    #     }
   }
 
   backend "azurerm" {}
 }
 
 provider "azurerm" {
-#   subscription_id     = var.deployment_subscription_id
   use_oidc            = true
   storage_use_azuread = true
   use_cli             = false
